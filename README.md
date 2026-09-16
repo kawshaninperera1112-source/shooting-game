@@ -4,7 +4,7 @@ This is a classic 3D First-Person Shooter (FPS) game built from scratch using **
 
 ---
 
-## 🕹️ Game Overview (ගේම් එක ගැන විස්තරය)
+## 🕹️ Game Overview 
 
 * **Genre:** 3D First-Person Shooter (FPS) / Retro Raycaster
 * **Language:** Python
@@ -16,7 +16,7 @@ In this game, players navigate through a maze-like 3D environment generated usin
 
 ---
 
-## ✨ Key Features (ප්‍රධාන විශේෂාංග)
+## ✨ Key Features
 
 * **3D Raycasting Engine:** Custom-built rendering engine to simulate a 3D environment using 2D maps.
 * **Smart NPC AI:** Enemies utilize **BFS (Breadth-First Search) pathfinding** to track and hunt down the player.
@@ -30,7 +30,7 @@ In this game, players navigate through a maze-like 3D environment generated usin
 
 ---
 
-## 🎮 Game Controls (ගේම් එක Play කරන හැටි)
+## 🎮 Game Controls 
 
 | Action | Key / Input |
 | :--- | :--- |
@@ -42,7 +42,7 @@ In this game, players navigate through a maze-like 3D environment generated usin
 
 ---
 
-## 🚀 Getting Started (Run කරන්නේ කොහොමද?)
+## 🚀 Getting Started 
 
 ### Prerequisites
 Make sure you have **Python 3.x** and **Pygame** installed on your system.
