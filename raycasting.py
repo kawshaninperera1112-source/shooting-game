@@ -1,6 +1,9 @@
-import pygame as pg
 import math
-from settings import *
+
+import pygame as pg
+
+from settings import (DELTA_ANGLE, HALF_FOV, HALF_HEIGHT, HALF_TEXTURE_SIZE, HEIGHT, MAX_DEPTH, NUM_RAYS,
+                      SCALE, SCREEN_DIST, TEXTURE_SIZE)
 
 
 class RayCasting:
@@ -40,8 +43,8 @@ class RayCasting:
 
         ray_angle = self.game.player.angle - HALF_FOV + 0.0001
         for ray in range(NUM_RAYS):
-            sin_a = math.sin(ray_angle)
-            cos_a = math.cos(ray_angle)
+            sin_a = math.sin(ray_angle) or 1e-9   # avoid dividing by exactly zero
+            cos_a = math.cos(ray_angle) or 1e-9
 
             # horizontals
             y_hor, dy = (y_map + 1, 1) if sin_a > 0 else (y_map - 1e-6, -1)
@@ -52,7 +55,7 @@ class RayCasting:
             delta_depth = dy / sin_a
             dx = delta_depth * cos_a
 
-            for i in range(MAX_DEPTH):
+            for _ in range(MAX_DEPTH):
                 tile_hor = int(x_hor), int(y_hor)
                 if tile_hor in self.game.map.world_map:
                     texture_hor = self.game.map.world_map[tile_hor]
@@ -70,7 +73,7 @@ class RayCasting:
             delta_depth = dx / cos_a
             dy = delta_depth * sin_a
 
-            for i in range(MAX_DEPTH):
+            for _ in range(MAX_DEPTH):
                 tile_vert = int(x_vert), int(y_vert)
                 if tile_vert in self.game.map.world_map:
                     texture_vert = self.game.map.world_map[tile_vert]

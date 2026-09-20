@@ -1,6 +1,10 @@
-from settings import *
-import pygame as pg
 import math
+
+import pygame as pg
+
+from settings import (HALF_HEIGHT, HALF_WIDTH, MOUSE_BORDER_LEFT, MOUSE_BORDER_RIGHT, MOUSE_MAX_REL,
+                      MOUSE_SENSITIVITY, PLAYER_ANGLE, PLAYER_HEALTH_RECOVERY_DELAY, PLAYER_MAX_HEALTH,
+                      PLAYER_POS, PLAYER_SIZE_SCALE, PLAYER_SPEED, STATE_GAME_OVER, STATE_PLAYING)
 
 
 class Player:
@@ -11,7 +15,6 @@ class Player:
         self.shot = False
         self.health = PLAYER_MAX_HEALTH
         self.rel = 0
-        self.health_recovery_delay = 700
         self.time_prev = pg.time.get_ticks()
         # diagonal movement correction
         self.diag_move_corr = 1 / math.sqrt(2)
@@ -22,24 +25,26 @@ class Player:
 
     def check_health_recovery_delay(self):
         time_now = pg.time.get_ticks()
-        if time_now - self.time_prev > self.health_recovery_delay:
+        if time_now - self.time_prev > PLAYER_HEALTH_RECOVERY_DELAY:
             self.time_prev = time_now
             return True
+        return False
 
     def check_game_over(self):
         if self.health < 1:
-            self.game.object_renderer.game_over()
-            pg.display.flip()
-            pg.time.delay(1500)
-            self.game.new_game()
+            self.game.set_state(STATE_GAME_OVER)
 
     def get_damage(self, damage):
-        self.health -= damage
+        if self.game.state != STATE_PLAYING:
+            return  # already dead: ignore hits from enemies that update later in the same frame
+        self.health = max(0, self.health - damage)
         self.game.object_renderer.player_damage()
         self.game.sound.player_pain.play()
         self.check_game_over()
 
     def single_fire_event(self, event):
+        if self.game.state != STATE_PLAYING:
+            return
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == 1 and not self.shot and not self.game.weapon.reloading:
                 self.game.sound.shotgun.play()
@@ -73,17 +78,12 @@ class Player:
             dx += -speed_sin
             dy += speed_cos
 
-        # diag move correction
-        if num_key_pressed:
+        # diagonal move correction (only when two or more keys are held)
+        if num_key_pressed > 0:
             dx *= self.diag_move_corr
             dy *= self.diag_move_corr
 
         self.check_wall_collision(dx, dy)
-
-        # if keys[pg.K_LEFT]:
-        #     self.angle -= PLAYER_ROT_SPEED * self.game.delta_time
-        # if keys[pg.K_RIGHT]:
-        #     self.angle += PLAYER_ROT_SPEED * self.game.delta_time
         self.angle %= math.tau
 
     def check_wall(self, x, y):
@@ -95,12 +95,6 @@ class Player:
             self.x += dx
         if self.check_wall(int(self.x), int(self.y + dy * scale)):
             self.y += dy
-
-    def draw(self):
-        pg.draw.line(self.game.screen, 'yellow', (self.x * 100, self.y * 100),
-                    (self.x * 100 + WIDTH * math.cos(self.angle),
-                     self.y * 100 + WIDTH * math. sin(self.angle)), 2)
-        pg.draw.circle(self.game.screen, 'green', (self.x * 100, self.y * 100), 15)
 
     def mouse_control(self):
         mx, my = pg.mouse.get_pos()

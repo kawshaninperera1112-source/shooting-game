@@ -1,6 +1,17 @@
-from sprite_object import *
-from npc import *
 from random import choices, randrange
+
+from npc import CacoDemonNPC, CyberDemonNPC, SoldierNPC
+from settings import ENEMY_WEIGHTS, NUM_ENEMIES, STATE_WIN
+from sprite_object import AnimatedSprite
+
+GREEN_LIGHT_POSITIONS = [
+    (11.5, 3.5), (1.5, 1.5), (1.5, 7.5), (5.5, 3.25), (5.5, 4.75), (7.5, 2.5), (7.5, 5.5),
+    (14.5, 1.5), (14.5, 4.5), (14.5, 24.5), (14.5, 30.5), (1.5, 30.5), (1.5, 24.5),
+]
+RED_LIGHT_POSITIONS = [
+    (14.5, 5.5), (14.5, 7.5), (12.5, 7.5), (9.5, 7.5), (14.5, 12.5),
+    (9.5, 20.5), (10.5, 20.5), (3.5, 14.5), (3.5, 18.5),
+]
 
 
 class ObjectHandler:
@@ -11,70 +22,58 @@ class ObjectHandler:
         self.npc_sprite_path = 'resources/sprites/npc/'
         self.static_sprite_path = 'resources/sprites/static_sprites/'
         self.anim_sprite_path = 'resources/sprites/animated_sprites/'
-        add_sprite = self.add_sprite
-        add_npc = self.add_npc
-        self.npc_positions = {}
+        self.npc_positions = set()   # tiles occupied by living NPCs
 
         # spawn npc
-        self.enemies = 20  # npc count
         self.npc_types = [SoldierNPC, CacoDemonNPC, CyberDemonNPC]
-        self.weights = [70, 20, 10]
-        self.restricted_area = {(i, j) for i in range(10) for j in range(10)}
+        self.weights = ENEMY_WEIGHTS
+        self.restricted_area = {(i, j) for i in range(10) for j in range(10)}  # no spawns near the player
         self.spawn_npc()
 
-        # sprite map
-        add_sprite(AnimatedSprite(game))
-        add_sprite(AnimatedSprite(game, pos=(1.5, 1.5)))
-        add_sprite(AnimatedSprite(game, pos=(1.5, 7.5)))
-        add_sprite(AnimatedSprite(game, pos=(5.5, 3.25)))
-        add_sprite(AnimatedSprite(game, pos=(5.5, 4.75)))
-        add_sprite(AnimatedSprite(game, pos=(7.5, 2.5)))
-        add_sprite(AnimatedSprite(game, pos=(7.5, 5.5)))
-        add_sprite(AnimatedSprite(game, pos=(14.5, 1.5)))
-        add_sprite(AnimatedSprite(game, pos=(14.5, 4.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(14.5, 5.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(14.5, 7.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(12.5, 7.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(9.5, 7.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(14.5, 12.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(9.5, 20.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(10.5, 20.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(3.5, 14.5)))
-        add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=(3.5, 18.5)))
-        add_sprite(AnimatedSprite(game, pos=(14.5, 24.5)))
-        add_sprite(AnimatedSprite(game, pos=(14.5, 30.5)))
-        add_sprite(AnimatedSprite(game, pos=(1.5, 30.5)))
-        add_sprite(AnimatedSprite(game, pos=(1.5, 24.5)))
-
-        # npc map
-        # add_npc(SoldierNPC(game, pos=(11.0, 19.0)))
-        # add_npc(SoldierNPC(game, pos=(11.5, 4.5)))
-        # add_npc(SoldierNPC(game, pos=(13.5, 6.5)))
-        # add_npc(SoldierNPC(game, pos=(2.0, 20.0)))
-        # add_npc(SoldierNPC(game, pos=(4.0, 29.0)))
-        # add_npc(CacoDemonNPC(game, pos=(5.5, 14.5)))
-        # add_npc(CacoDemonNPC(game, pos=(5.5, 16.5)))
-        # add_npc(CyberDemonNPC(game, pos=(14.5, 25.5)))
+        # decorative sprites
+        for pos in GREEN_LIGHT_POSITIONS:
+            self.add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'green_light/0.png', pos=pos))
+        for pos in RED_LIGHT_POSITIONS:
+            self.add_sprite(AnimatedSprite(game, path=self.anim_sprite_path + 'red_light/0.png', pos=pos))
 
     def spawn_npc(self):
-        for i in range(self.enemies):
-                npc = choices(self.npc_types, self.weights)[0]
-                pos = x, y = randrange(self.game.map.cols), randrange(self.game.map.rows)
-                while (pos in self.game.map.world_map) or (pos in self.restricted_area):
-                    pos = x, y = randrange(self.game.map.cols), randrange(self.game.map.rows)
-                self.add_npc(npc(self.game, pos=(x + 0.5, y + 0.5)))
+        occupied = set()
+        for _ in range(NUM_ENEMIES):
+            npc_type = choices(self.npc_types, self.weights)[0]
+            pos = self.random_free_tile(occupied)
+            occupied.add(pos)
+            x, y = pos
+            self.add_npc(npc_type(self.game, pos=(x + 0.5, y + 0.5)))
+
+    def random_free_tile(self, occupied):
+        """Pick a random floor tile that is not a wall, not near the player and not already used."""
+        while True:
+            pos = randrange(self.game.map.cols), randrange(self.game.map.rows)
+            if (pos not in self.game.map.world_map and pos not in self.restricted_area
+                    and pos not in occupied):
+                return pos
+
+    def handle_shot(self):
+        """Resolve the player's shot: only the closest enemy under the crosshair is hit."""
+        player = self.game.player
+        if not player.shot:
+            return
+        player.shot = False
+        targets = [npc for npc in self.npc_list if npc.is_targeted()]
+        if targets:
+            min(targets, key=lambda npc: npc.dist).take_hit(self.game.weapon.damage)
 
     def check_win(self):
-        if not len(self.npc_positions):
-            self.game.object_renderer.win()
-            pg.display.flip()
-            pg.time.delay(1500)
-            self.game.new_game()
+        if not any(npc.alive for npc in self.npc_list):
+            self.game.set_state(STATE_WIN)
 
     def update(self):
         self.npc_positions = {npc.map_pos for npc in self.npc_list if npc.alive}
-        [sprite.update() for sprite in self.sprite_list]
-        [npc.update() for npc in self.npc_list]
+        for sprite in self.sprite_list:
+            sprite.update()
+        for npc in self.npc_list:
+            npc.update()
+        self.handle_shot()
         self.check_win()
 
     def add_npc(self, npc):

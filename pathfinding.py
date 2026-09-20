@@ -1,47 +1,60 @@
 from collections import deque
-from functools import lru_cache
 
 
 class PathFinding:
+    """Breadth-first-search pathfinding on the tile grid.
+
+    Instead of running one BFS per enemy per frame, we run a single BFS outward
+    from the player. That gives every reachable tile a pointer to the neighbouring
+    tile that is one step closer to the player, so every enemy can look up its next
+    step instantly. The result only changes when the player moves to a new tile
+    (the walls never change), so it is cached until then.
+    """
+
     def __init__(self, game):
         self.game = game
         self.map = game.map.mini_map
         self.ways = [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [1, 1], [-1, 1]
         self.graph = {}
+        self._goal = None
+        self._toward_goal = {}
         self.get_graph()
 
-    @lru_cache
     def get_path(self, start, goal):
-        self.visited = self.bfs(start, goal, self.graph)
-        path = [goal]
-        step = self.visited.get(goal, start)
+        """Return the next tile to step to when walking from `start` towards `goal`."""
+        if start == goal:
+            return goal
+        if goal != self._goal:
+            self._toward_goal = self.bfs(goal)
+            self._goal = goal
+        return self._toward_goal.get(start, start)   # unreachable tile: stay where we are
 
-        while step and step != start:
-            path.append(step)
-            step = self.visited[step]
-        return path[-1]
-
-    def bfs(self, start, goal, graph):
-        queue = deque([start])
-        visited = {start: None}
+    def bfs(self, goal):
+        queue = deque([goal])
+        toward_goal = {goal: None}
 
         while queue:
             cur_node = queue.popleft()
-            if cur_node == goal:
-                break
-            next_nodes = graph[cur_node]
-
-            for next_node in next_nodes:
-                if next_node not in visited and next_node not in self.game.object_handler.npc_positions:
+            for next_node in self.graph.get(cur_node, ()):
+                if next_node not in toward_goal:
+                    toward_goal[next_node] = cur_node
                     queue.append(next_node)
-                    visited[next_node] = cur_node
-        return visited
+        return toward_goal
 
     def get_next_nodes(self, x, y):
-        return [(x + dx, y + dy) for dx, dy in self.ways if (x + dx, y + dy) not in self.game.map.world_map]
+        world_map = self.game.map.world_map
+        nodes = []
+        for dx, dy in self.ways:
+            if (x + dx, y + dy) in world_map:
+                continue
+            # no diagonal moves that cut through the corner of a wall
+            if dx and dy and ((x + dx, y) in world_map or (x, y + dy) in world_map):
+                continue
+            nodes.append((x + dx, y + dy))
+        return nodes
 
     def get_graph(self):
         for y, row in enumerate(self.map):
-            for x, col in enumerate(row):
-                if not col:
-                    self.graph[(x, y)] = self.graph.get((x, y), []) + self.get_next_nodes(x, y)
+            for x, tile in enumerate(row):
+                if not tile:
+                    self.graph[(x, y)] = self.get_next_nodes(x, y)

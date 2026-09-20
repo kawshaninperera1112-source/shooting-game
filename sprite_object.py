@@ -1,7 +1,41 @@
-import pygame as pg
-from settings import *
+import math
 import os
 from collections import deque
+
+import pygame as pg
+
+from settings import DELTA_ANGLE, HALF_HEIGHT, HALF_NUM_RAYS, SCALE, SCREEN_DIST, WIDTH
+
+IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.bmp')
+
+# Images are loaded from disk only once and shared, so restarting the game is instant.
+_image_cache = {}
+_frames_cache = {}
+
+
+def load_image(path):
+    """Load an image (once) and return the cached Surface. Never modify the result in place."""
+    image = _image_cache.get(path)
+    if image is None:
+        image = _image_cache[path] = pg.image.load(path).convert_alpha()
+    return image
+
+
+def _frame_sort_key(file_name):
+    """Sort '0.png, 1.png ... 10.png' numerically (plain sorting would put 10 before 2)."""
+    stem = os.path.splitext(file_name)[0]
+    return (0, int(stem), '') if stem.isdigit() else (1, 0, stem)
+
+
+def load_frames(folder):
+    """Return the animation frames in `folder` as a NEW deque (each sprite rotates its own copy)."""
+    frames = _frames_cache.get(folder)
+    if frames is None:
+        file_names = [f for f in os.listdir(folder)
+                      if f.lower().endswith(IMAGE_EXTENSIONS) and os.path.isfile(os.path.join(folder, f))]
+        file_names.sort(key=_frame_sort_key)
+        frames = _frames_cache[folder] = [load_image(os.path.join(folder, f)) for f in file_names]
+    return deque(frames)
 
 
 class SpriteObject:
@@ -10,7 +44,7 @@ class SpriteObject:
         self.game = game
         self.player = game.player
         self.x, self.y = pos
-        self.image = pg.image.load(path).convert_alpha()
+        self.image = load_image(path)
         self.IMAGE_WIDTH = self.image.get_width()
         self.IMAGE_HALF_WIDTH = self.image.get_width() // 2
         self.IMAGE_RATIO = self.IMAGE_WIDTH / self.image.get_height()
@@ -23,7 +57,7 @@ class SpriteObject:
         proj = SCREEN_DIST / self.norm_dist * self.SPRITE_SCALE
         proj_width, proj_height = proj * self.IMAGE_RATIO, proj
 
-        image = pg.transform.scale(self.image, (proj_width, proj_height))
+        image = pg.transform.scale(self.image, (int(proj_width), int(proj_height)))
 
         self.sprite_half_width = proj_width // 2
         height_shift = proj_height * self.SPRITE_HEIGHT_SHIFT
@@ -81,9 +115,4 @@ class AnimatedSprite(SpriteObject):
             self.animation_trigger = True
 
     def get_images(self, path):
-        images = deque()
-        for file_name in os.listdir(path):
-            if os.path.isfile(os.path.join(path, file_name)):
-                img = pg.image.load(path + '/' + file_name).convert_alpha()
-                images.append(img)
-        return images
+        return load_frames(path)

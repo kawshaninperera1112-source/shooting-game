@@ -1,5 +1,8 @@
-from sprite_object import *
+import math
 from random import randint, random
+
+from settings import HALF_WIDTH, MAX_DEPTH, NPC_REFERENCE_FRAME_MS
+from sprite_object import AnimatedSprite
 
 
 class NPC(AnimatedSprite):
@@ -13,14 +16,14 @@ class NPC(AnimatedSprite):
         self.walk_images = self.get_images(self.path + '/walk')
 
         self.attack_dist = randint(3, 6)
-        self.speed = 0.03
+        self.speed = 0.03            # tiles per 60-FPS frame (scaled by real frame time)
         self.size = 20
         self.health = 100
         self.attack_damage = 10
         self.accuracy = 0.15
         self.alive = True
         self.pain = False
-        self.ray_cast_value = False
+        self.ray_cast_value = False  # True while the NPC has a clear line of sight to the player
         self.frame_counter = 0
         self.player_search_trigger = False
 
@@ -28,7 +31,6 @@ class NPC(AnimatedSprite):
         self.check_animation_time()
         self.get_sprite()
         self.run_logic()
-        # self.draw_ray_cast()
 
     def check_wall(self, x, y):
         return (x, y) not in self.game.map.world_map
@@ -41,14 +43,14 @@ class NPC(AnimatedSprite):
 
     def movement(self):
         next_pos = self.game.pathfinding.get_path(self.map_pos, self.game.player.map_pos)
-        next_x, next_y = next_pos
+        if next_pos in self.game.object_handler.npc_positions:
+            return  # that tile is taken by another NPC (or our own tile): wait
 
-        # pg.draw.rect(self.game.screen, 'blue', (100 * next_x, 100 * next_y, 100, 100))
-        if next_pos not in self.game.object_handler.npc_positions:
-            angle = math.atan2(next_y + 0.5 - self.y, next_x + 0.5 - self.x)
-            dx = math.cos(angle) * self.speed
-            dy = math.sin(angle) * self.speed
-            self.check_wall_collision(dx, dy)
+        next_x, next_y = next_pos
+        angle = math.atan2(next_y + 0.5 - self.y, next_x + 0.5 - self.x)
+        # scale by real frame time so enemy speed does not depend on the frame rate
+        step = self.speed * self.game.delta_time / NPC_REFERENCE_FRAME_MS
+        self.check_wall_collision(math.cos(angle) * step, math.sin(angle) * step)
 
     def attack(self):
         if self.animation_trigger:
@@ -68,14 +70,16 @@ class NPC(AnimatedSprite):
         if self.animation_trigger:
             self.pain = False
 
-    def check_hit_in_npc(self):
-        if self.ray_cast_value and self.game.player.shot:
-            if HALF_WIDTH - self.sprite_half_width < self.screen_x < HALF_WIDTH + self.sprite_half_width:
-                self.game.sound.npc_pain.play()
-                self.game.player.shot = False
-                self.pain = True
-                self.health -= self.game.weapon.damage
-                self.check_health()
+    def is_targeted(self):
+        """True if this NPC is alive, visible, in front of the player and under the crosshair."""
+        return (self.alive and self.ray_cast_value and self.norm_dist > 0.5
+                and HALF_WIDTH - self.sprite_half_width < self.screen_x < HALF_WIDTH + self.sprite_half_width)
+
+    def take_hit(self, damage):
+        self.game.sound.npc_pain.play()
+        self.pain = True
+        self.health -= damage
+        self.check_health()
 
     def check_health(self):
         if self.health < 1:
@@ -85,7 +89,6 @@ class NPC(AnimatedSprite):
     def run_logic(self):
         if self.alive:
             self.ray_cast_value = self.ray_cast_player_npc()
-            self.check_hit_in_npc()
 
             if self.pain:
                 self.animate_pain()
@@ -114,6 +117,7 @@ class NPC(AnimatedSprite):
         return int(self.x), int(self.y)
 
     def ray_cast_player_npc(self):
+        """Cast a ray from the player towards this NPC; True if no wall is in between."""
         if self.game.player.map_pos == self.map_pos:
             return True
 
@@ -125,8 +129,8 @@ class NPC(AnimatedSprite):
 
         ray_angle = self.theta
 
-        sin_a = math.sin(ray_angle)
-        cos_a = math.cos(ray_angle)
+        sin_a = math.sin(ray_angle) or 1e-9   # avoid dividing by exactly zero
+        cos_a = math.cos(ray_angle) or 1e-9
 
         # horizontals
         y_hor, dy = (y_map + 1, 1) if sin_a > 0 else (y_map - 1e-6, -1)
@@ -137,7 +141,7 @@ class NPC(AnimatedSprite):
         delta_depth = dy / sin_a
         dx = delta_depth * cos_a
 
-        for i in range(MAX_DEPTH):
+        for _ in range(MAX_DEPTH):
             tile_hor = int(x_hor), int(y_hor)
             if tile_hor == self.map_pos:
                 player_dist_h = depth_hor
@@ -158,7 +162,7 @@ class NPC(AnimatedSprite):
         delta_depth = dx / cos_a
         dy = delta_depth * sin_a
 
-        for i in range(MAX_DEPTH):
+        for _ in range(MAX_DEPTH):
             tile_vert = int(x_vert), int(y_vert)
             if tile_vert == self.map_pos:
                 player_dist_v = depth_vert
@@ -177,17 +181,12 @@ class NPC(AnimatedSprite):
             return True
         return False
 
-    def draw_ray_cast(self):
-        pg.draw.circle(self.game.screen, 'red', (100 * self.x, 100 * self.y), 15)
-        if self.ray_cast_player_npc():
-            pg.draw.line(self.game.screen, 'orange', (100 * self.game.player.x, 100 * self.game.player.y),
-                         (100 * self.x, 100 * self.y), 2)
-
 
 class SoldierNPC(NPC):
     def __init__(self, game, path='resources/sprites/npc/soldier/0.png', pos=(10.5, 5.5),
                  scale=0.6, shift=0.38, animation_time=180):
         super().__init__(game, path, pos, scale, shift, animation_time)
+
 
 class CacoDemonNPC(NPC):
     def __init__(self, game, path='resources/sprites/npc/caco_demon/0.png', pos=(10.5, 6.5),
@@ -199,6 +198,7 @@ class CacoDemonNPC(NPC):
         self.speed = 0.05
         self.accuracy = 0.35
 
+
 class CyberDemonNPC(NPC):
     def __init__(self, game, path='resources/sprites/npc/cyber_demon/0.png', pos=(11.5, 6.0),
                  scale=1.0, shift=0.04, animation_time=210):
@@ -208,24 +208,3 @@ class CyberDemonNPC(NPC):
         self.attack_damage = 15
         self.speed = 0.055
         self.accuracy = 0.25
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

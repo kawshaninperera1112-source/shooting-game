@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Editors / tools
+.vscode/
+.idea/
+tempCodeRunnerFile.py
+
+# Packaging (PyInstaller)
+build/
+dist/
+*.spec
