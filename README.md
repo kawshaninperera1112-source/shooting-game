@@ -4,8 +4,8 @@ A retro first-person shooter in the style of *DOOM* and *Wolfenstein 3D*, writte
 
 > 📌 **Note:** This project is based on the open-source *"DOOM-style Game"* project and video tutorial by Coder Space (StanislavPetrovV). I followed it to learn how raycasting engines work, then studied the code, fixed bugs, and improved it. See [My Changes](#-my-changes) and [Credits](#-credits).
 
-<!-- Add your own screenshot / GIF here (put the file in a docs/ folder): -->
-<!-- ![Gameplay](docs/gameplay.gif) -->
+
+![Gameplay]([shooting%20game.mp4)
 
 ---
 
