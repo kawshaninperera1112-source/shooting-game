@@ -185,5 +185,5 @@ No license has been chosen yet. Because this project is built on the tutorial re
 
 ## 👤 Author
 
-**Your Name**
+**Kawshani Perera**
 GitHub: [@kawshaninperera1112-source](https://github.com/kawshaninperera1112-source)
