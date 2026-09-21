@@ -9,7 +9,7 @@ A retro first-person shooter in the style of *DOOM* and *Wolfenstein 3D*, writte
 
 ▶️ Watch the gameplay video
 
-<video src="https://github.com/kawshaninperera1112-source/shooting-game/raw/main/shooting-game.mp4" controls muted width="100%"> Your browser does not support the video tag. Use the link above to watch the gameplay. </video>
+<video src="[https://github.com/kawshaninperera1112-source/shooting-game/raw/main/shooting-game.mp4](https://github.com/kawshaninperera1112-source/shooting-game/blob/main/shooting-game.mp4)" controls muted width="100%"> Your browser does not support the video tag. Use the link above to watch the gameplay. </video>
 
 ---
 
